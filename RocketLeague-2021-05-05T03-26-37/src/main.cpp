@@ -26,6 +26,33 @@ controller Controller1;
 
 float pusharmspeed = 100;
 float motorspeed = 100;
+
+//settings
+double kP = 0.25;
+double kI = 0.0;
+double kD = 0.1;
+
+double turnkP = 0.2;
+double turnkI = 0.0;
+double turnkD = 0.1;
+
+//autonomous settings
+int desiredValue = 20;
+int desiredTurnValue = 0;
+
+int error;//sensorvalue - desiredvalue : position
+int prevError = 0; //postion 20 msec ago
+int derivative;//error - preverror : speed
+int totalError;
+
+int turnError;//sensorvalue - desiredvalue : position
+int turnPrevError = 0; //postion 20 msec ago
+int turnDerivative;//error - preverror : speed
+int turnTotalError;
+
+
+
+
 // define your global instances of motors and other devices here
 
 /*---------------------------------------------------------------------------*/
@@ -46,6 +73,98 @@ void pre_auton(void) {
   // Example: clearing encoders, setting servo positions, ...
 }
 
+
+bool enablePID = true;
+
+int drivePID() {
+
+  while(enablePID){
+
+    //Postion of both motors 
+    int leftMotorPostion = motor_left.position(degrees);
+    int rightMotorPostion = motor_right.position(degrees);
+
+
+    //Lateral Movement Pid
+
+
+    
+
+    //average position
+    int averagePostion= (leftMotorPostion + rightMotorPostion) / 2;
+    
+    //potential
+    error = averagePostion - desiredValue;
+
+    //deriative
+    derivative = error - prevError;
+
+    //integral 
+    //totalError += error;
+
+    int MotorPower = error * kP + derivative * kD;
+
+    motor_left.spin(reverse, MotorPower, pct);
+    motor_left.spin(fwd, motorspeed, pct);
+
+    //turning movement PID
+    //average position
+    int turnDifference = (leftMotorPostion - rightMotorPostion);
+    
+    //potential
+    turnError = turnDifference - desiredTurnValue ;
+
+    //deriative
+    turnDerivative = turnError - turnPrevError;
+
+    //integral 
+    //turnTotalError += turnError;
+
+    int turnMotorPower = turnError * turnkP + turnDerivative * turnkD;
+    
+
+    motor_left.spin(reverse, turnMotorPower, pct);
+    motor_right.spin(forward, turnMotorPower, pct);
+
+
+    
+    //code
+    prevError = error;
+    turnPrevError = turnError;
+    vex::task::sleep(20);
+
+  }
+
+
+  return 1; 
+}
+
+void UpdateScreen() {
+  Controller1.Screen.clearScreen();
+
+  if (Competition.isDriverControl()) 
+  {
+    Controller1.Screen.clearScreen();
+    Controller1.Screen.setCursor(1, 1);
+    Controller1.Screen.print("User Control Active");
+    Controller1.Screen.setCursor(3, 1);
+    Controller1.Screen.print("Battery: ");
+    Controller1.Screen.print(Brain.Battery.capacity());
+    Controller1.Screen.print("%%");
+  }
+  else if (Competition.isAutonomous()) {
+    Controller1.Screen.clearScreen();
+    Controller1.Screen.setCursor(1, 1);
+    Controller1.Screen.print("Autonomous");
+    Controller1.Screen.setCursor(3, 1);
+    Controller1.Screen.print("Battery: ");
+    Controller1.Screen.print(Brain.Battery.capacity());
+    Controller1.Screen.print("%%");
+  }
+
+}
+
+
 /*---------------------------------------------------------------------------*/
 /*                                                                           */
 /*                              Autonomous Task                              */
@@ -57,10 +176,21 @@ void pre_auton(void) {
 /*---------------------------------------------------------------------------*/
 
 void autonomous(void) {
+
+
+  
   // ..........................................................................
   // Insert autonomous user code here.
   // ..........................................................................
+
+  vex::task yeet(drivePID);
+  desiredValue = 50;
+  desiredTurnValue = 80;
+
+
 }
+
+
 
 /*---------------------------------------------------------------------------*/
 /*                                                                           */
@@ -74,7 +204,7 @@ void autonomous(void) {
 
 void usercontrol(void) {
   // User control code here, inside the loop
-    
+  enablePID = false; 
 
     
   while (1) {
@@ -89,16 +219,15 @@ void usercontrol(void) {
         
     
       if (Controller1.Axis3.position() - Controller1.Axis2.position() > 50)  {
-        motorspeed = 90;
+        motorspeed = 0.85;
         //if bot joystick position turning, limit speed
       }
       else if (Controller1.Axis2.position() - Controller1.Axis3.position() > 50) {
-        motorspeed = 90;
+        motorspeed = 0.85;
         //if bot joystick position turning, limit spee (opposite)
       }
       else {
-        motor_left.spin(vex::directionType::fwd, Controller1.Axis3.position(vex::percentUnits::pct) * motorspeed, vex::velocityUnits::pct);
-        motor_right.spin(vex::directionType::rev, Controller1.Axis2.position(vex::percentUnits::pct) * motorspeed, vex::velocityUnits::pct);
+        motorspeed = 1;
       }
         motor_left.spin(vex::directionType::fwd, Controller1.Axis3.position(vex::percentUnits::pct) * motorspeed, vex::velocityUnits::pct);
         motor_right.spin(vex::directionType::rev, Controller1.Axis2.position(vex::percentUnits::pct) * motorspeed, vex::velocityUnits::pct);   
@@ -107,6 +236,11 @@ void usercontrol(void) {
                     // prevent wasted resources.
   }
 }
+
+
+
+
+
 
 //
 // Main will set up the competition functions and callbacks.
