@@ -50,7 +50,11 @@ int turnPrevError = 0; //postion 20 msec ago
 int turnDerivative;//error - preverror : speed
 int turnTotalError;
 
+const float WHEEL_CIRCUMFERENCE = 31.9185812596;
+const float MOTOR_ACCEL_LIMIT = 8;
 
+int s_lastL = 0;
+int s_lastR = 0; 
 
 
 // define your global instances of motors and other devices here
@@ -65,79 +69,50 @@ int turnTotalError;
 /*  not every time that the robot is disabled.                               */
 /*---------------------------------------------------------------------------*/
 
-void pre_auton(void) {
-  // Initializing Robot Configuration. DO NOT REMOVE!
-  vexcodeInit();
+void DriveDistance(int dist, float maxTime)
+{
+  motor_left.resetPosition();
+  motor_right.resetPosition();
 
-  // All activities that occur before the competition starts
-  // Example: clearing encoders, setting servo positions, ...
-}
+  //Constant Tuning Values
+  const float Kp = 1;
+  const float Kd = 0;
+  const float Ki = 0;
 
-
-bool enablePID = true;
-
-int drivePID() {
-
-  while(enablePID){
-
-    //Postion of both motors 
-    int leftMotorPostion = motor_left.position(degrees);
-    int rightMotorPostion = motor_right.position(degrees);
+  float rotationGoal = (dist / WHEEL_CIRCUMFERENCE) * 360;
 
 
-    //Lateral Movement Pid
 
 
-    
+  float distError = 0;
+  float integral = 0;
+  float derivative = 0;
+  float lastError = 0;
 
-    //average position
-    int averagePostion= (leftMotorPostion + rightMotorPostion) / 2;
-    
-    //potential
-    error = averagePostion - desiredValue;
+  float motorSpeed = 0;
+  
+  float doneTime = 0;
+  while(maxTime > doneTime / 1000)
+  {
+    distError = rotationGoal - motor_left.rotation(deg);
 
-    //deriative
-    derivative = error - prevError;
+    integral += distError;
 
-    //integral 
-    //totalError += error;
+    if(distError > 200 || distError < -200)
+    {
+      integral  = 0;
+    }
 
-    int MotorPower = error * kP + derivative * kD;
+    derivative = distError - lastError;
 
-    motor_left.spin(reverse, MotorPower, pct);
-    motor_left.spin(fwd, motorspeed, pct);
+    lastError = distError;
 
-    //turning movement PID
-    //average position
-    int turnDifference = (leftMotorPostion - rightMotorPostion);
-    
-    //potential
-    turnError = turnDifference - desiredTurnValue ;
-
-    //deriative
-    turnDerivative = turnError - turnPrevError;
-
-    //integral 
-    //turnTotalError += turnError;
-
-    int turnMotorPower = turnError * turnkP + turnDerivative * turnkD;
-    
-
-    motor_left.spin(reverse, turnMotorPower, pct);
-    motor_right.spin(forward, turnMotorPower, pct);
-
-
-    
-    //code
-    prevError = error;
-    turnPrevError = turnError;
-    vex::task::sleep(20);
-
+    motorSpeed = Kp * distError + Ki * integral + Kd * derivative;
   }
-
-
-  return 1; 
 }
+
+
+
 
 void UpdateScreen() {
   Controller1.Screen.clearScreen();
@@ -183,9 +158,7 @@ void autonomous(void) {
   // Insert autonomous user code here.
   // ..........................................................................
 
-  vex::task yeet(drivePID);
-  desiredValue = 50;
-  desiredTurnValue = 80;
+  DriveDistance(50, 5);
 
 
 }
@@ -204,7 +177,7 @@ void autonomous(void) {
 
 void usercontrol(void) {
   // User control code here, inside the loop
-  enablePID = false; 
+  
 
     
   while (1) {
@@ -217,7 +190,9 @@ void usercontrol(void) {
     // update your motors, etc.
     // ........................................................................
         
-    
+
+
+
       if (Controller1.Axis3.position() - Controller1.Axis2.position() > 50)  {
         motorspeed = 0.85;
         //if bot joystick position turning, limit speed
@@ -231,12 +206,17 @@ void usercontrol(void) {
       }
         motor_left.spin(vex::directionType::fwd, Controller1.Axis3.position(vex::percentUnits::pct) * motorspeed, vex::velocityUnits::pct);
         motor_right.spin(vex::directionType::rev, Controller1.Axis2.position(vex::percentUnits::pct) * motorspeed, vex::velocityUnits::pct);   
+      
+      
+     
+    
 
+      
     wait(20, msec); // Sleep the task for a short amount of time to
                     // prevent wasted resources.
   }
-}
 
+}
 
 
 
@@ -245,13 +225,15 @@ void usercontrol(void) {
 //
 // Main will set up the competition functions and callbacks.
 //
-int main() {
-  // Set up callbacks for autonomous and driver control periods.
+int main() 
+{
+ // Set up callbacks for autonomous and driver control periods.
   Competition.autonomous(autonomous);
   Competition.drivercontrol(usercontrol);
+  UpdateScreen();
 
   // Run the pre-autonomous function.
-  pre_auton();
+  
 
   // Prevent main from exiting with an infinite loop.
   while (true) {
