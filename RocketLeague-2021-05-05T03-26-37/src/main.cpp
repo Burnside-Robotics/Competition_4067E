@@ -56,7 +56,11 @@ const float MOTOR_ACCEL_LIMIT = 8;
 int s_lastL = 0;
 int s_lastR = 0; 
 
-
+bool driveReversed;
+void ToggleDriveDirection()
+{
+  driveReversed = !driveReversed;
+}
 // define your global instances of motors and other devices here
 
 /*---------------------------------------------------------------------------*/
@@ -81,7 +85,8 @@ void DriveDistance(int dist, float maxTime)
 
   float rotationGoal = (dist / WHEEL_CIRCUMFERENCE) * 360;
 
-
+  const float maxSpeed = 100;
+  const float accelTime = 500;
 
 
   float distError = 0;
@@ -194,11 +199,11 @@ void usercontrol(void) {
 
 
       if (Controller1.Axis3.position() - Controller1.Axis2.position() > 50)  {
-        motorspeed = 0.85;
+        motorspeed = 0.8;
         //if bot joystick position turning, limit speed
       }
       else if (Controller1.Axis2.position() - Controller1.Axis3.position() > 50) {
-        motorspeed = 0.85;
+        motorspeed = 0.8;
         //if bot joystick position turning, limit spee (opposite)
       }
       else {
@@ -206,9 +211,6 @@ void usercontrol(void) {
       }
         motor_left.spin(vex::directionType::fwd, Controller1.Axis3.position(vex::percentUnits::pct) * motorspeed, vex::velocityUnits::pct);
         motor_right.spin(vex::directionType::rev, Controller1.Axis2.position(vex::percentUnits::pct) * motorspeed, vex::velocityUnits::pct);   
-      
-      
-     
     
 
       
@@ -227,6 +229,7 @@ void usercontrol(void) {
 //
 int main() 
 {
+  Controller1.ButtonA.pressed(ToggleDriveDirection);
  // Set up callbacks for autonomous and driver control periods.
   Competition.autonomous(autonomous);
   Competition.drivercontrol(usercontrol);
