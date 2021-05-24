@@ -22,10 +22,11 @@ motor motor_right (PORT10, ratio18_1);
 
 controller Controller1;
 
-
+float lSpeed = 0;
+float rSpeed = 0;
 
 float pusharmspeed = 100;
-float motorspeed = 100;
+//float motorspeed = 100;
 
 //settings
 double kP = 0.25;
@@ -51,15 +52,38 @@ int turnDerivative;//error - preverror : speed
 int turnTotalError;
 
 const float WHEEL_CIRCUMFERENCE = 31.9185812596;
-const float MOTOR_ACCEL_LIMIT = 8;
+float MOTOR_ACCEL_LIMIT = 100;
 
 int s_lastL = 0;
 int s_lastR = 0; 
 
-bool driveReversed;
 void ToggleDriveDirection()
 {
-  driveReversed = !driveReversed;
+  lSpeed = -10;
+}
+
+void setSideSpeeds(int lSpeed, int rSpeed)
+{
+    if ((lSpeed - s_lastL) > MOTOR_ACCEL_LIMIT)
+        lSpeed = s_lastL + MOTOR_ACCEL_LIMIT;
+    if ((lSpeed - s_lastL) < -MOTOR_ACCEL_LIMIT)
+        lSpeed = s_lastL - MOTOR_ACCEL_LIMIT;
+    if ((rSpeed - s_lastR) > MOTOR_ACCEL_LIMIT)
+        rSpeed = s_lastR + MOTOR_ACCEL_LIMIT;
+    if ((rSpeed - s_lastR) < -MOTOR_ACCEL_LIMIT)
+        rSpeed = s_lastR - MOTOR_ACCEL_LIMIT;
+
+    s_lastL = lSpeed;
+    s_lastR = rSpeed;
+
+    if (lSpeed == 0)
+        motor_left.stop(brakeType::brake);
+    else
+        motor_left.spin(directionType::fwd, lSpeed, velocityUnits::pct);
+    if (rSpeed == 0)
+        motor_right.stop(brakeType::brake);
+    else
+        motor_right.spin(directionType::fwd, rSpeed, velocityUnits::pct);
 }
 // define your global instances of motors and other devices here
 
@@ -166,6 +190,7 @@ void autonomous(void) {
   DriveDistance(50, 5);
 
 
+
 }
 
 
@@ -199,18 +224,19 @@ void usercontrol(void) {
 
 
       if (Controller1.Axis3.position() - Controller1.Axis2.position() > 50)  {
-        motorspeed = 0.8;
+        MOTOR_ACCEL_LIMIT = 80;
+        
         //if bot joystick position turning, limit speed
       }
       else if (Controller1.Axis2.position() - Controller1.Axis3.position() > 50) {
-        motorspeed = 0.8;
+        MOTOR_ACCEL_LIMIT = 80;
         //if bot joystick position turning, limit spee (opposite)
       }
       else {
-        motorspeed = 1;
+        MOTOR_ACCEL_LIMIT = 100;
+        
       }
-        motor_left.spin(vex::directionType::fwd, Controller1.Axis3.position(vex::percentUnits::pct) * motorspeed, vex::velocityUnits::pct);
-        motor_right.spin(vex::directionType::rev, Controller1.Axis2.position(vex::percentUnits::pct) * motorspeed, vex::velocityUnits::pct);   
+           
     
 
       
