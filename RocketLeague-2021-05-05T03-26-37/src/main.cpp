@@ -19,14 +19,17 @@ competition Competition;
 
 motor motor_left (PORT1, ratio18_1);
 motor motor_right (PORT10, ratio18_1);
+motor motor_pusher (PORT2, ratio36_1);
+
+motor_group train (motor_left, motor_right);
 
 controller Controller1;
 
 float lSpeed = 0;
 float rSpeed = 0;
 
-float pusharmspeed = 100;
-//float motorspeed = 100;
+float pusharmspeed = 80;
+float motorspeed = 100;
 
 //settings
 double kP = 0.25;
@@ -52,39 +55,17 @@ int turnDerivative;//error - preverror : speed
 int turnTotalError;
 
 const float WHEEL_CIRCUMFERENCE = 31.9185812596;
-float MOTOR_ACCEL_LIMIT = 100;
+float MOTOR_ACCEL_LIMIT = 5;
 
 int s_lastL = 0;
 int s_lastR = 0; 
 
 void ToggleDriveDirection()
 {
-  lSpeed = -10;
+  motorspeed = motorspeed * -1;
 }
 
-void setSideSpeeds(int lSpeed, int rSpeed)
-{
-    if ((lSpeed - s_lastL) > MOTOR_ACCEL_LIMIT)
-        lSpeed = s_lastL + MOTOR_ACCEL_LIMIT;
-    if ((lSpeed - s_lastL) < -MOTOR_ACCEL_LIMIT)
-        lSpeed = s_lastL - MOTOR_ACCEL_LIMIT;
-    if ((rSpeed - s_lastR) > MOTOR_ACCEL_LIMIT)
-        rSpeed = s_lastR + MOTOR_ACCEL_LIMIT;
-    if ((rSpeed - s_lastR) < -MOTOR_ACCEL_LIMIT)
-        rSpeed = s_lastR - MOTOR_ACCEL_LIMIT;
 
-    s_lastL = lSpeed;
-    s_lastR = rSpeed;
-
-    if (lSpeed == 0)
-        motor_left.stop(brakeType::brake);
-    else
-        motor_left.spin(directionType::fwd, lSpeed, velocityUnits::pct);
-    if (rSpeed == 0)
-        motor_right.stop(brakeType::brake);
-    else
-        motor_right.spin(directionType::fwd, rSpeed, velocityUnits::pct);
-}
 // define your global instances of motors and other devices here
 
 /*---------------------------------------------------------------------------*/
@@ -187,10 +168,24 @@ void autonomous(void) {
   // Insert autonomous user code here.
   // ..........................................................................
 
-  DriveDistance(50, 5);
+motor_left.setVelocity(50, pct);
+motor_right.setVelocity(50, pct);
+
+motor_left.startRotateFor(vex::directionType::fwd, 1500, vex::rotationUnits::deg);
+motor_right.startRotateFor(vex::directionType::rev, 1500, vex::rotationUnits::deg); 
 
 
 
+
+
+//motor_right.startRotateFor(vex::directionType::fwd, 360, vex::rotationUnits::deg);
+
+//vex::task::sleep(50);
+
+//motor_right.startRotateFor(vex::directionType::fwd, 360, vex::rotationUnits::deg);
+
+
+vex::task::sleep(50);
 }
 
 
@@ -224,22 +219,44 @@ void usercontrol(void) {
 
 
       if (Controller1.Axis3.position() - Controller1.Axis2.position() > 50)  {
-        MOTOR_ACCEL_LIMIT = 80;
+        motorspeed = 80;
         
         //if bot joystick position turning, limit speed
       }
       else if (Controller1.Axis2.position() - Controller1.Axis3.position() > 50) {
-        MOTOR_ACCEL_LIMIT = 80;
+        motorspeed = 80;
         //if bot joystick position turning, limit spee (opposite)
       }
       else {
-        MOTOR_ACCEL_LIMIT = 100;
-        
+        motorspeed = 100;
       }
-           
-    
+      if (Controller1.ButtonR1.pressing()) {
+        motor_pusher.spin(fwd, pusharmspeed, pct);
+      }
+      else {
+        motor_pusher.stop(vex::brakeType::hold);
+      }
 
-      
+
+
+
+
+      //motor_left.spin(vex::directionType::rev, Controller1.Axis3.position(vex::percentUnits::pct) * motorspeed, vex::velocityUnits::pct);
+      //motor_right.spin(vex::directionType::fwd, Controller1.Axis2.position(vex::percentUnits::pct) * motorspeed, vex::velocityUnits::pct);
+
+      if (Controller1.Axis3.position() == 0 && Controller1.Axis2.position() == 0) {
+        motor_left.stop(vex::brakeType::brake);
+        motor_right.stop(vex::brakeType::brake);
+      }
+      else {
+      motor_left.spin(vex::directionType::fwd, Controller1.Axis3.position(vex::percentUnits::pct) * motorspeed, vex::velocityUnits::pct);
+      motor_right.spin(vex::directionType::rev, Controller1.Axis2.position(vex::percentUnits::pct) * motorspeed, vex::velocityUnits::pct);        
+      }
+
+
+      if (Controller1.ButtonL1.pressing()) {
+        motor_pusher.spin(reverse,pusharmspeed,pct);
+      }
     wait(20, msec); // Sleep the task for a short amount of time to
                     // prevent wasted resources.
   }
